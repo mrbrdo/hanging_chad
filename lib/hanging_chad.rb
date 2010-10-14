@@ -132,7 +132,7 @@ module HangingChad
 
     protected
     def get_user_id user
-      if user.class == FixNum
+      if user.class == Fixnum
         user
       elsif user
         user.id

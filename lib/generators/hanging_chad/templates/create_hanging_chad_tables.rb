@@ -1,8 +1,8 @@
 class CreateHangingChadTables < ActiveRecord::Migration
   def self.up
     create_table "votes" do |t|
-      t.integer :voteable_id
-      t.string :voteable_type
+      t.integer :votable_id
+      t.string :votable_type
       t.string :kind
 
       t.integer :user_id
@@ -12,13 +12,13 @@ class CreateHangingChadTables < ActiveRecord::Migration
       t.timestamps
     end
 
-    add_index :votes, [:voteable_type, :voteable_id]
+    add_index :votes, [:votable_type, :votable_id]
     add_index :votes, :kind
     add_index :votes, :user_id
 
     create_table :vote_totals do |t|
-      t.integer :voteable_id
-      t.string :voteable_type
+      t.integer :votable_id
+      t.string :votable_type
       t.string :kind
       
       t.integer :total
@@ -31,7 +31,7 @@ class CreateHangingChadTables < ActiveRecord::Migration
       t.timestamps
     end
 
-    add_index :vote_totals, [:voteable_type, :voteable_id]
+    add_index :vote_totals, [:votable_type, :votable_id]
     add_index :vote_totals, :kind
   end
 
