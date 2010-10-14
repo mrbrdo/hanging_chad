@@ -27,14 +27,15 @@ module HangingChad
 
         named_scope(:include_votes_by_user, lambda do |user|
           if user
+            user_id = get_user_id(user)
             if hanging_chad[:kinds].empty?
-              { :select => "#{table_name}.*, votes.value AS user_#{user.id}_vote", 
-                :joins => "LEFT OUTER JOIN votes ON votes.votable_type = '#{self}' AND votes.votable_id = #{table_name}.id AND votes.user_id = #{user.id.to_i}" }
+              { :select => "#{table_name}.*, votes.value AS user_#{user_id}_vote", 
+                :joins => "LEFT OUTER JOIN votes ON votes.votable_type = '#{self}' AND votes.votable_id = #{table_name}.id AND votes.user_id = #{user_id}" }
             else
               joins = hanging_chad[:kinds].map do |kind|
                 votes = "#{kind}_votes"
-                ["#{votes}.value AS user_#{user.id.to_s}_#{kind}_vote",
-                 "LEFT OUTER JOIN votes AS #{votes} ON #{votes}.votable_type = '#{self}' AND #{votes}.votable_id = #{table_name}.id AND #{votes}.user_id = #{user.id.to_i} AND #{votes}.kind = '#{kind}'"]
+                ["#{votes}.value AS user_#{user_id.to_s}_#{kind}_vote",
+                 "LEFT OUTER JOIN votes AS #{votes} ON #{votes}.votable_type = '#{self}' AND #{votes}.votable_id = #{table_name}.id AND #{votes}.user_id = #{user_id} AND #{votes}.kind = '#{kind}'"]
               end
               
               { :select => "#{table_name}.*, #{joins.map(&:first).join(",")}",
@@ -74,29 +75,38 @@ module HangingChad
 
     def record_vote(user, value, kind=nil)
       check_kind(kind)
-
-      vote = votes.find_or_create_by_user_id_and_kind(user.id, kind.to_s)
+      
+      user_id = get_user_id(user)
+      
+      if user_id
+        vote = votes.find_or_create_by_user_id_and_kind(user_id, kind.to_s)
+      else
+        vote = votes.create({:user_id => nil, :kind => kind.to_s})
+      end
+      
       vote.update_attribute(:value, value)
     end
 
     def vote_from_user(user, kind=nil)
-      return nil unless user
+      user_id = get_user_id(user)
+      return nil unless user_id
       check_kind(kind)
+      
       @vote_from_user ||= {}
-      unless @vote_from_user[[user.id,kind]]
-        if (vote = read_included_vote_attribute(user, kind)) != nil
-          @vote_from_user[[user.id,kind]] = (vote == :no_vote)? nil : vote
+      unless @vote_from_user[[user_id,kind]]
+        if (vote = read_included_vote_attribute(user_id, kind)) != nil
+          @vote_from_user[[user_id,kind]] = (vote == :no_vote)? nil : vote
         else
-          @vote_from_user[[user.id,kind]] =
+          @vote_from_user[[user_id,kind]] =
             votes.find(:first, 
-                       :conditions => {:kind => kind.to_s, :user_id => user.id}).try(:value)
+                       :conditions => {:kind => kind.to_s, :user_id => user_id}).try(:value)
         end
       end
-      @vote_from_user[[user.id,kind]]
+      @vote_from_user[[user_id,kind]]
     end
 
     def user_voted?(user, kind=nil)
-      [true, false].include?(vote_from_user(user, kind))
+      [true, false].include?(vote_from_user(get_user_id(user), kind))
     end
 
 
@@ -121,13 +131,23 @@ module HangingChad
     end
 
     protected
+    def get_user_id user
+      if user.class == FixNum
+        user
+      elsif user
+        user.id
+      else
+        nil
+      end
+    end
+    
     def get_vote_total(field, kind=nil)
       check_kind(kind)
       vote_totals.find(:first, :conditions => {:kind => kind.to_s}).try(field)
     end
 
-    def read_included_vote_attribute(user, kind=nil)
-      attr_name = (kind)? "user_#{user.id}_#{kind}_vote" : "user_#{user.id}_vote"
+    def read_included_vote_attribute(user_id, kind=nil)
+      attr_name = (kind)? "user_#{user_id}_#{kind}_vote" : "user_#{user_id}_vote"
       
       if has_attribute?(attr_name)
         v = read_attribute(attr_name)
