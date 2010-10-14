@@ -1,7 +1,7 @@
 module HangingChad
   class NoKindSpecified < RuntimeError; end
   class KindDoesNotExist < RuntimeError; end
-
+    
   module ClassMethods
     def hanging_chad
       read_inheritable_attribute(:hanging_chad) ||
