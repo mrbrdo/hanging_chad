@@ -15,13 +15,13 @@ module HangingChad
     def has_votes(options={})
       unless hanging_chad
         self.hanging_chad = {:kinds => []}
-        has_many :votes, :as => :voteable, :dependent => :destroy
-        has_one :vote_total, :as => :voteable, :dependent => :destroy
-        has_many :vote_totals, :as => :voteable, :dependent => :destroy
+        has_many :votes, :as => :votable, :dependent => :destroy
+        has_one :vote_total, :as => :votable, :dependent => :destroy
+        has_many :vote_totals, :as => :votable, :dependent => :destroy
 
         named_scope(:sort_by_votes, lambda do |kind|
           quoted_kind = ActiveRecord::Base.connection.quote(kind.to_s)
-          {:joins => "LEFT OUTER JOIN vote_totals ON vote_totals.voteable_type = '#{self}' AND vote_totals.voteable_id = #{table_name}.id AND vote_totals.kind = #{quoted_kind}",
+          {:joins => "LEFT OUTER JOIN vote_totals ON vote_totals.votable_type = '#{self}' AND vote_totals.votable_id = #{table_name}.id AND vote_totals.kind = #{quoted_kind}",
             :order => "percent_ayes DESC"}
         end)
 
@@ -29,12 +29,12 @@ module HangingChad
           if user
             if hanging_chad[:kinds].empty?
               { :select => "#{table_name}.*, votes.value AS user_#{user.id}_vote", 
-                :joins => "LEFT OUTER JOIN votes ON votes.voteable_type = '#{self}' AND votes.voteable_id = #{table_name}.id AND votes.user_id = #{user.id.to_i}" }
+                :joins => "LEFT OUTER JOIN votes ON votes.votable_type = '#{self}' AND votes.votable_id = #{table_name}.id AND votes.user_id = #{user.id.to_i}" }
             else
               joins = hanging_chad[:kinds].map do |kind|
                 votes = "#{kind}_votes"
                 ["#{votes}.value AS user_#{user.id.to_s}_#{kind}_vote",
-                 "LEFT OUTER JOIN votes AS #{votes} ON #{votes}.voteable_type = '#{self}' AND #{votes}.voteable_id = #{table_name}.id AND #{votes}.user_id = #{user.id.to_i} AND #{votes}.kind = '#{kind}'"]
+                 "LEFT OUTER JOIN votes AS #{votes} ON #{votes}.votable_type = '#{self}' AND #{votes}.votable_id = #{table_name}.id AND #{votes}.user_id = #{user.id.to_i} AND #{votes}.kind = '#{kind}'"]
               end
               
               { :select => "#{table_name}.*, #{joins.map(&:first).join(",")}",
@@ -52,11 +52,11 @@ module HangingChad
 
         has_many "#{kind_name}_votes", 
                  :class_name => 'Vote',
-                 :as => :voteable,
+                 :as => :votable,
                  :conditions => {:kind => kind_name.to_s}
         has_one "#{kind_name}_vote_total",
                 :class_name => 'Vote',
-                :as => :voteable,
+                :as => :votable,
                 :conditions => {:kind => kind_name.to_s}
       end
       include HangingChad::InstanceMethods
