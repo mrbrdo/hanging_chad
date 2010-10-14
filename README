@@ -44,6 +44,8 @@ Recording a vote for a Comment would work like
 
     @comment.record_vote(user, true, :insightfulness)
     
+Note: User can now either be any object with an id attribute, a Fixnum, or nil.
+
 Other methods of interest are
 
 Instance Methods:
